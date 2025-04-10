@@ -1,14 +1,13 @@
-name: Run tests
+name: Audit Terraform configuration
 
 on:
   push:
     branches:
-      - master
       - dev
 
   pull_request:
     branches:
-      - master
+      - dev
 
 jobs:
   tests:
@@ -25,32 +24,23 @@ jobs:
 
       - name: Initialize Terraform
         run: terraform init
-        env:
+        env: &aws_creds
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ vars.AWS_REGION }}
 
       - name: Validate Terraform configuration
         run: terraform validate
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
+        env: *aws_creds
 
       - name: Plan Terraform deployment
         run: terraform plan
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
+        env: *aws_creds
 
       - name: Apply Terraform configuration (for Dev only)
         if: github.ref == 'refs/heads/dev'
         run: terraform apply
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
+        env: *aws_creds
 
   tflint:
     runs-on: ubuntu-latest
@@ -69,7 +59,7 @@ jobs:
       - name: Init TFLint
         run: tflint --init
         env:
-          # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
+          # Remove request restruction (60 requests p/h) https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Run TFLint
